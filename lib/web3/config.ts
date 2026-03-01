@@ -14,10 +14,11 @@ const rpcUrl = process.env.NEXT_PUBLIC_BASE_RPC_URL || (
 );
 
 // Build connectors array
+// farcasterFrame: works inside Farcaster Mini App (Warpcast)
+// injected: works in browser with MetaMask or other EVM wallets
 const connectors = [
   farcasterFrame(),
-  // Add injected connector for dev/testing outside Mini App
-  ...(process.env.NODE_ENV === 'development' ? [injected()] : []),
+  injected(),
 ];
 
 // Create config with explicit chain type to satisfy wagmi's strict typing
