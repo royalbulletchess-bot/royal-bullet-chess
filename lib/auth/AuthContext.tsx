@@ -19,6 +19,7 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   login: () => Promise<void>;
+  loginWithWallet: (address: string, signMessageAsync: (args: { message: string }) => Promise<string>) => Promise<void>;
   logout: () => void;
 }
 
@@ -113,13 +114,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const loginWithWallet = useCallback(
+    async (
+      address: string,
+      signMessageAsync: (args: { message: string }) => Promise<string>
+    ) => {
+      setState((s) => ({ ...s, isLoading: true, error: null }));
+
+      try {
+        // Build SIWE-style message
+        const message = [
+          'Sign in to Royal Bullet Chess',
+          `Wallet: ${address.toLowerCase()}`,
+          `Timestamp: ${new Date().toISOString()}`,
+        ].join('\n');
+
+        // Ask user to sign the message via their wallet
+        const signature = await signMessageAsync({ message });
+
+        // Send to wallet auth endpoint
+        const res = await fetch('/api/auth/wallet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address, message, signature }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({ error: 'Wallet auth failed' }));
+          throw new Error(data.error || 'Wallet authentication failed');
+        }
+
+        const { user, sessionToken } = await res.json();
+
+        // Persist session
+        localStorage.setItem(SESSION_KEY, JSON.stringify({ user, sessionToken }));
+
+        setState({ user, sessionToken, isLoading: false, error: null });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Wallet login failed';
+        // Don't show error if user rejected the signature
+        if (message.includes('User rejected') || message.includes('user rejected')) {
+          setState((s) => ({ ...s, isLoading: false, error: null }));
+        } else {
+          setState((s) => ({ ...s, isLoading: false, error: message }));
+        }
+      }
+    },
+    []
+  );
+
   const logout = useCallback(() => {
     localStorage.removeItem(SESSION_KEY);
     setState({ user: null, sessionToken: null, isLoading: false, error: null });
   }, []);
 
   return (
-    <AuthContext.Provider value={{ ...state, login, logout }}>
+    <AuthContext.Provider value={{ ...state, login, loginWithWallet, logout }}>
       {children}
     </AuthContext.Provider>
   );
