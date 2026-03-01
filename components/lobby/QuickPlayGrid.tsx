@@ -4,45 +4,126 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   QUICK_PLAY_AMOUNTS,
-  QUICK_PLAY_SEARCH_TIMEOUT_MS,
   COMMISSION_RATE,
 } from '@/lib/constants';
+import { useApi } from '@/lib/hooks/use-api';
+import { useGamePayment } from '@/lib/hooks/use-game-payment';
+import { createClient } from '@/lib/supabase/client';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 
 export default function QuickPlayGrid() {
   const router = useRouter();
+  const { apiFetch } = useApi();
+  const { createAndPay, status: paymentStatus, error: paymentError, reset: resetPayment, isConnected } = useGamePayment();
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [isSearching, setIsSearching] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [waitingGameId, setWaitingGameId] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const channelRef = useRef<any>(null);
+  const supabaseRef = useRef(createClient());
 
-  // Cleanup timer on unmount
+  // Cleanup on unmount
   useEffect(() => {
+    const supabase = supabaseRef.current;
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
     };
   }, []);
 
   function handleSelect(amount: number) {
     setSelectedAmount(amount);
     setIsSearching(false);
+    setSearchError(null);
+    resetPayment();
   }
 
-  function handleSearch() {
+  async function handlePayAndPlay() {
     if (!selectedAmount) return;
-    setIsSearching(true);
 
-    // Phase 1 mock: after timeout, navigate to game
-    timerRef.current = setTimeout(() => {
-      const gameId = `qp-${selectedAmount}-${Date.now()}`;
-      router.push(`/game/${gameId}`);
-    }, QUICK_PLAY_SEARCH_TIMEOUT_MS);
+    if (!isConnected) {
+      setSearchError('Please connect your wallet first');
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchError(null);
+
+    try {
+      // Step 1: Send on-chain payment (approve + createGame on escrow contract)
+      const tempGameId = crypto.randomUUID();
+      const paymentResult = await createAndPay(selectedAmount, tempGameId);
+
+      // Step 2: Send txHash to server for verification + matchmaking
+      const { data, error } = await apiFetch<{
+        game: { id: string; status: string };
+        matched: boolean;
+      }>('/api/quick-play', {
+        method: 'POST',
+        body: JSON.stringify({
+          betAmount: selectedAmount,
+          txHash: paymentResult.txHash,
+        }),
+      });
+
+      if (error) {
+        setSearchError(error);
+        setIsSearching(false);
+        return;
+      }
+
+      if (data?.matched) {
+        // Matched with an existing game — go to game
+        router.push(`/game/${data.game.id}`);
+        return;
+      }
+
+      // Created a new OPEN game — subscribe to changes and wait for opponent
+      if (data?.game) {
+        setWaitingGameId(data.game.id);
+
+        const channel = supabaseRef.current
+          .channel(`quick-play-${data.game.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'games',
+              filter: `id=eq.${data.game.id}`,
+            },
+            (payload) => {
+              const newStatus = payload.new?.status;
+              if (newStatus === 'MATCHING' || newStatus === 'ACTIVE') {
+                router.push(`/game/${data.game.id}`);
+              }
+            }
+          )
+          .subscribe();
+
+        channelRef.current = channel;
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Payment failed';
+      if (!message.includes('cancelled by user')) {
+        setSearchError(message);
+      }
+      setIsSearching(false);
+    }
   }
 
   function handleCancel() {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = null;
+    if (channelRef.current) {
+      supabaseRef.current.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
     setIsSearching(false);
+    setWaitingGameId(null);
+    setSearchError(null);
+    resetPayment();
   }
 
   function handleClose() {
@@ -52,6 +133,20 @@ export default function QuickPlayGrid() {
 
   const fee = selectedAmount ? selectedAmount * COMMISSION_RATE : 0;
   const prize = selectedAmount ? selectedAmount * 2 - fee * 2 : 0;
+
+  // Payment status text
+  const getStatusText = () => {
+    switch (paymentStatus) {
+      case 'approving': return 'Approving USDC...';
+      case 'approved': return 'USDC approved!';
+      case 'sending': return 'Sending to escrow...';
+      case 'pending': return 'Confirming on-chain...';
+      case 'confirmed': return 'Payment confirmed!';
+      default:
+        if (waitingGameId) return 'Waiting for opponent...';
+        return 'Processing...';
+    }
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -106,11 +201,18 @@ export default function QuickPlayGrid() {
               </div>
             </div>
 
+            {/* Error */}
+            {(searchError || paymentError) && (
+              <p className="text-xs text-[var(--danger)] text-center">
+                {searchError || paymentError}
+              </p>
+            )}
+
             {/* Actions */}
             {!isSearching ? (
               <div className="flex flex-col gap-2">
-                <Button size="lg" className="w-full" onClick={handleSearch}>
-                  Search Opponent
+                <Button size="lg" className="w-full" onClick={handlePayAndPlay}>
+                  💳 Pay & Play ${selectedAmount}
                 </Button>
                 <Button
                   size="lg"
@@ -126,17 +228,19 @@ export default function QuickPlayGrid() {
                 <div className="flex items-center gap-2">
                   <div className="h-2.5 w-2.5 rounded-full bg-[var(--accent)] animate-pulse" />
                   <span className="text-sm text-[var(--muted)]">
-                    Searching for opponent...
+                    {getStatusText()}
                   </span>
                 </div>
-                <Button
-                  size="lg"
-                  variant="secondary"
-                  className="w-full"
-                  onClick={handleCancel}
-                >
-                  Cancel Search
-                </Button>
+                {waitingGameId && (
+                  <Button
+                    size="lg"
+                    variant="secondary"
+                    className="w-full"
+                    onClick={handleCancel}
+                  >
+                    Cancel Search
+                  </Button>
+                )}
               </div>
             )}
           </div>

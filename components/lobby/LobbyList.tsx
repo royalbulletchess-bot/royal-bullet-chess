@@ -6,9 +6,10 @@ import LobbyCard from './LobbyCard';
 interface LobbyListProps {
   games: LobbyGame[];
   onJoin: (gameId: string) => void;
+  joiningId?: string | null;
 }
 
-export default function LobbyList({ games, onJoin }: LobbyListProps) {
+export default function LobbyList({ games, onJoin, joiningId }: LobbyListProps) {
   if (games.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -26,7 +27,7 @@ export default function LobbyList({ games, onJoin }: LobbyListProps) {
   return (
     <div className="flex flex-col gap-2">
       {games.map((game) => (
-        <LobbyCard key={game.id} game={game} onJoin={onJoin} />
+        <LobbyCard key={game.id} game={game} onJoin={onJoin} isJoining={joiningId === game.id} />
       ))}
     </div>
   );

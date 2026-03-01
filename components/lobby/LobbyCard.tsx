@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button';
 interface LobbyCardProps {
   game: LobbyGame;
   onJoin: (gameId: string) => void;
+  isJoining?: boolean;
 }
 
 function getWaitingTime(createdAt: string): string {
@@ -18,7 +19,7 @@ function getWaitingTime(createdAt: string): string {
   return `${minutes}m ${seconds % 60}s`;
 }
 
-export default function LobbyCard({ game, onJoin }: LobbyCardProps) {
+export default function LobbyCard({ game, onJoin, isJoining }: LobbyCardProps) {
   return (
     <div className="flex items-center justify-between rounded-xl bg-[var(--card)] border border-[var(--border)] px-4 py-3 transition-colors hover:bg-[var(--card-hover)]">
       <div className="flex items-center gap-3">
@@ -35,7 +36,7 @@ export default function LobbyCard({ game, onJoin }: LobbyCardProps) {
         <span className="rounded-lg bg-[var(--background)] px-3 py-1 text-sm font-bold text-[var(--accent)]">
           ${game.bet_amount}
         </span>
-        <Button size="sm" onClick={() => onJoin(game.id)}>
+        <Button size="sm" onClick={() => onJoin(game.id)} loading={isJoining}>
           Join
         </Button>
       </div>

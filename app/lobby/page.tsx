@@ -1,22 +1,50 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth/AuthContext';
+import Avatar from '@/components/ui/Avatar';
 import MainTabs from '@/components/lobby/MainTabs';
 import QuickPlayGrid from '@/components/lobby/QuickPlayGrid';
 import LobbyContent from '@/components/lobby/LobbyContent';
+import WalletInfo from '@/components/wallet/WalletInfo';
+import NotificationBell from '@/components/lobby/NotificationBell';
 
 export default function LobbyPage() {
   const router = useRouter();
+  const { user } = useAuth();
 
   return (
     <div className="flex flex-col px-4 py-6 gap-5">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold">Royal Bullet Chess</h1>
-        <p className="text-xs text-[var(--muted)] mt-0.5">
-          1+0 Bullet &middot; USDC on Base
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold">Royal Bullet Chess</h1>
+          <p className="text-xs text-[var(--muted)] mt-0.5">
+            1+0 Bullet &middot; USDC on Base
+          </p>
+        </div>
+        {user && (
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <div className="text-right">
+              <p className="text-xs font-medium truncate max-w-[100px]">
+                {user.farcaster_username}
+              </p>
+              <p className="text-[10px] text-[var(--muted)]">
+                ELO {user.elo_rating}
+              </p>
+            </div>
+            <Avatar
+              src={user.farcaster_avatar}
+              username={user.farcaster_username}
+              size="sm"
+            />
+          </div>
+        )}
       </div>
+
+      {/* Wallet Info (on-chain balance) */}
+      <WalletInfo />
 
       {/* Play vs AI — always visible above tabs */}
       <button

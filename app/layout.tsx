@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
+import { AuthProvider } from '@/lib/auth/AuthContext';
+import { Web3Provider } from '@/lib/web3/provider';
 import './globals.css';
 
 const geistSans = localFont({
@@ -37,9 +39,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-[var(--background)] text-[var(--foreground)]`}
       >
-        <main className="mx-auto max-w-md min-h-screen">
-          {children}
-        </main>
+        <Web3Provider>
+          <AuthProvider>
+            <main className="mx-auto max-w-md min-h-screen">
+              {children}
+            </main>
+          </AuthProvider>
+        </Web3Provider>
       </body>
     </html>
   );

@@ -25,6 +25,8 @@ export type DrawOfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
 
 export type WithdrawalStatus = 'PENDING' | 'CONFIRMED' | 'FAILED';
 
+export type DepositStatus = 'PENDING' | 'CONFIRMED' | 'FAILED';
+
 export type NotificationType =
   | 'LOBBY_JOIN'
   | 'REMATCH_REQUEST'
@@ -93,8 +95,18 @@ export interface Withdrawal {
   id: string;
   user_id: string;
   amount: number;
+  wallet_address: string | null;
   tx_hash: string | null;
   status: WithdrawalStatus;
+  created_at: string;
+}
+
+export interface Deposit {
+  id: string;
+  user_id: string;
+  tx_hash: string;
+  amount: number;
+  status: DepositStatus;
   created_at: string;
 }
 
