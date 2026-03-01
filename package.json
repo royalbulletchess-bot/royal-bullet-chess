@@ -1,0 +1,33 @@
+{
+  "name": "royal-bullet-chess",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "postinstall": "mkdir -p public/stockfish && cp node_modules/stockfish/bin/stockfish-18-lite-single.js public/stockfish/ && cp node_modules/stockfish/bin/stockfish-18-lite-single.wasm public/stockfish/"
+  },
+  "dependencies": {
+    "@farcaster/miniapp-sdk": "^0.2.3",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.97.0",
+    "chess.js": "^1.4.0",
+    "next": "14.2.35",
+    "react": "^18",
+    "react-chessboard": "^4.7.3",
+    "react-dom": "^18",
+    "stockfish": "^18.0.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.35",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
+  }
+}
