@@ -3,7 +3,9 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { withAuth, apiOk, apiError, generateInviteCode } from '@/lib/api/helpers';
 import { GAME_TIME_MS, LOBBY_EXPIRY_SECONDS } from '@/lib/constants';
 import { verifyGamePayment } from '@/lib/web3/verify-payment';
+import { broadcastGameUpdate } from '@/lib/game/broadcast';
 import type { SessionPayload } from '@/lib/auth/session';
+import type { Game } from '@/types';
 
 /**
  * POST /api/quick-play — Find an OPEN game with the same bet or create a new one
@@ -87,6 +89,10 @@ async function handler(req: NextRequest, session: SessionPayload) {
         from_address: verification.from || '',
         to_address: process.env.NEXT_PUBLIC_GAME_ESCROW_ADDRESS || '',
       });
+
+      // Broadcast MATCHING state to Player 1 (creator) waiting on lobby
+      // This bypasses RLS which blocks postgres_changes for custom JWT auth
+      await broadcastGameUpdate(game.id, updatedGame as Game);
 
       return apiOk({ game: updatedGame, matched: true });
     }

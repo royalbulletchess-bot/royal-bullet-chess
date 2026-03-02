@@ -10,8 +10,8 @@ interface MainTabsProps {
 }
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: 'quick-play', label: 'HIZLI OYUN' },
-  { id: 'lobby', label: 'LOBİ' },
+  { id: 'quick-play', label: 'QUICK PLAY' },
+  { id: 'lobby', label: 'LOBBY' },
 ];
 
 export default function MainTabs({ quickPlayContent, lobbyContent }: MainTabsProps) {

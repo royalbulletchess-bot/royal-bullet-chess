@@ -2,7 +2,9 @@ import { NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { withAuth, apiOk, apiError } from '@/lib/api/helpers';
 import { verifyGamePayment } from '@/lib/web3/verify-payment';
+import { broadcastGameUpdate } from '@/lib/game/broadcast';
 import type { SessionPayload } from '@/lib/auth/session';
+import type { Game } from '@/types';
 
 /**
  * POST /api/games/[id]/join — Join an existing lobby game
@@ -108,6 +110,10 @@ async function handler(
     from_address: verification.from || '',
     to_address: process.env.NEXT_PUBLIC_GAME_ESCROW_ADDRESS || '',
   });
+
+  // Broadcast MATCHING state to Player 1 (creator)
+  // This bypasses RLS which blocks postgres_changes for custom JWT auth
+  await broadcastGameUpdate(gameId, updatedGame as Game);
 
   return apiOk({ game: updatedGame });
 }

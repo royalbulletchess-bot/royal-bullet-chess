@@ -81,27 +81,20 @@ export default function QuickPlayGrid() {
         return;
       }
 
-      // Created a new OPEN game — subscribe to changes and wait for opponent
+      // Created a new OPEN game — subscribe to broadcast channel and wait for opponent
+      // Uses broadcast (not postgres_changes) because our custom JWT auth
+      // doesn't work with Supabase RLS, which blocks postgres_changes events
       if (data?.game) {
         setWaitingGameId(data.game.id);
 
         const channel = supabaseRef.current
-          .channel(`quick-play-${data.game.id}`)
-          .on(
-            'postgres_changes',
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'games',
-              filter: `id=eq.${data.game.id}`,
-            },
-            (payload) => {
-              const newStatus = payload.new?.status;
-              if (newStatus === 'MATCHING' || newStatus === 'ACTIVE') {
-                router.push(`/game/${data.game.id}`);
-              }
+          .channel(`game-broadcast-${data.game.id}`)
+          .on('broadcast', { event: 'game_update' }, (payload) => {
+            const update = payload.payload;
+            if (update?.status === 'MATCHING' || update?.status === 'ACTIVE') {
+              router.push(`/game/${data.game.id}`);
             }
-          )
+          })
           .subscribe();
 
         channelRef.current = channel;
