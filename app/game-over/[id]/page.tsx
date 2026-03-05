@@ -145,6 +145,18 @@ export default function GameOverPage() {
           {isWin ? 'Victory!' : isDraw ? 'Draw!' : 'Defeat'}
         </h1>
         <p className="text-sm text-[var(--muted)]">{reason}</p>
+        {/* ELO change */}
+        {(() => {
+          const eloChange = isCreator ? game.creator_elo_change : game.opponent_elo_change;
+          if (eloChange != null) {
+            return (
+              <p className={`text-sm font-bold mt-1 ${eloChange >= 0 ? 'text-[var(--accent)]' : 'text-[var(--danger)]'}`}>
+                ELO {eloChange >= 0 ? '+' : ''}{eloChange}
+              </p>
+            );
+          }
+          return null;
+        })()}
         {fullMoves > 0 && (
           <p className="text-xs text-[var(--muted)] mt-1">
             {fullMoves} move{fullMoves !== 1 ? 's' : ''}

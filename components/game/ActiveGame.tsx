@@ -13,6 +13,7 @@ import DrawOfferBanner from '@/components/game/DrawOfferBanner';
 import { useMultiplayerGame } from '@/lib/hooks/use-multiplayer-game';
 import { useGameSounds } from '@/lib/chess/use-game-sounds';
 import { useApi } from '@/lib/hooks/use-api';
+import { useAuth } from '@/lib/auth/AuthContext';
 import type { Game, User, PlayerColor } from '@/types';
 
 // Dynamic import to prevent SSR issues with react-chessboard
@@ -38,6 +39,7 @@ interface ActiveGameProps {
 export default function ActiveGame({ game, myColor, opponent, gameId }: ActiveGameProps) {
   const router = useRouter();
   const { apiFetch } = useApi();
+  const { user } = useAuth();
   const { playLowTimeTick } = useGameSounds();
   const supabase = useRef(createClient()).current;
 
@@ -67,6 +69,16 @@ export default function ActiveGame({ game, myColor, opponent, gameId }: ActiveGa
   const [isRespondingDraw, setIsRespondingDraw] = useState(false);
   const [drawOfferSent, setDrawOfferSent] = useState(false);
 
+  // ──── Warn before page close during active game ────
+  useEffect(() => {
+    if (gameOver) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [gameOver]);
+
   // ──── Listen for draw offer broadcasts ────
   useEffect(() => {
     const channelName = `game-broadcast-${gameId}`;
@@ -85,12 +97,7 @@ export default function ActiveGame({ game, myColor, opponent, gameId }: ActiveGa
         }
 
         if (offer.status === 'PENDING') {
-          // Check if it's from the opponent (not us)
-          const myId = game.creator_id === (myColor === (game.creator_color as PlayerColor) ? game.creator_id : game.opponent_id)
-            ? game.creator_id
-            : game.opponent_id;
-
-          if (offer.offered_by !== myId) {
+          if (offer.offered_by !== user?.id) {
             setPendingDrawOffer(true);
           }
         } else if (offer.status === 'REJECTED') {
@@ -103,7 +110,7 @@ export default function ActiveGame({ game, myColor, opponent, gameId }: ActiveGa
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [gameId, supabase, game.creator_id, game.opponent_id, game.creator_color, myColor]);
+  }, [gameId, supabase, game.creator_id, game.opponent_id, game.creator_color, myColor, user?.id]);
 
   // ──── Actions ────
 
@@ -173,13 +180,13 @@ export default function ActiveGame({ game, myColor, opponent, gameId }: ActiveGa
   const opponentUsername = opponent?.farcaster_username || 'Opponent';
 
   const topColor: PlayerColor = playerColor === 'WHITE' ? 'BLACK' : 'WHITE';
-  const topUsername = playerColor === 'WHITE' ? opponentUsername : myUsername;
-  const topAvatar = playerColor === 'WHITE' ? (opponent?.farcaster_avatar || null) : null;
+  const topUsername = opponentUsername;
+  const topAvatar = opponent?.farcaster_avatar || null;
   const topTimeMs = topColor === 'WHITE' ? whiteTimeMs : blackTimeMs;
   const topTimerRunning = topColor === 'WHITE' ? isWhiteTimerRunning : isBlackTimerRunning;
 
-  const bottomUsername = playerColor === 'WHITE' ? myUsername : opponentUsername;
-  const bottomAvatar = playerColor === 'WHITE' ? null : (opponent?.farcaster_avatar || null);
+  const bottomUsername = myUsername;
+  const bottomAvatar = null;
   const bottomTimeMs = playerColor === 'WHITE' ? whiteTimeMs : blackTimeMs;
   const bottomTimerRunning = playerColor === 'WHITE' ? isWhiteTimerRunning : isBlackTimerRunning;
 

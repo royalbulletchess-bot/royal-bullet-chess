@@ -115,6 +115,15 @@ export async function finishGame({
         .update({ elo_rating: opponentNewElo })
         .eq('id', opponent.id);
 
+      // Store ELO deltas in the game record
+      await supabaseAdmin
+        .from('games')
+        .update({
+          creator_elo_change: creatorDelta,
+          opponent_elo_change: opponentDelta,
+        })
+        .eq('id', gameId);
+
       console.log(
         `[finishGame] ELO — Creator: ${creator.elo_rating} → ${creatorNewElo} (${creatorDelta >= 0 ? '+' : ''}${creatorDelta}), ` +
         `Opponent: ${opponent.elo_rating} → ${opponentNewElo} (${opponentDelta >= 0 ? '+' : ''}${opponentDelta})`

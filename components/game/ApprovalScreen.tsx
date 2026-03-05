@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Avatar from '@/components/ui/Avatar';
 import Button from '@/components/ui/Button';
 import type { Game, User, PlayerColor } from '@/types';
@@ -24,6 +25,7 @@ export default function ApprovalScreen({
   onApprove,
   isApproving,
 }: ApprovalScreenProps) {
+  const router = useRouter();
   const [countdown, setCountdown] = useState(60);
 
   // Countdown timer based on matching_expires_at
@@ -111,7 +113,15 @@ export default function ApprovalScreen({
       </p>
 
       {/* Action */}
-      {!myApproved ? (
+      {countdown <= 0 ? (
+        <Button
+          size="lg"
+          className="w-full max-w-xs"
+          onClick={() => router.push('/lobby')}
+        >
+          Back to Lobby
+        </Button>
+      ) : !myApproved ? (
         <Button
           size="lg"
           className="w-full max-w-xs"

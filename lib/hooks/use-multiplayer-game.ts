@@ -316,13 +316,23 @@ export function useMultiplayerGame(
           }
         }
 
-        // ─── Send to server (fire and forget) ───
+        // ─── Send to server ───
+        const prevFen = currentFen;
+        const prevMoveCount = moveCountRef.current - 1;
+        const prevMoveHistory = moveHistory;
+
         apiFetch(`/api/games/${game.id}/move`, {
           method: 'POST',
           body: JSON.stringify({ from, to, promotion }),
         }).then(({ error }) => {
           if (error) {
-            console.error('[useMultiplayerGame] Server rejected move:', error);
+            console.error('[useMultiplayerGame] Server rejected move, rolling back:', error);
+            setFen(prevFen);
+            fenRef.current = prevFen;
+            setMoveCount(prevMoveCount);
+            moveCountRef.current = prevMoveCount;
+            setMoveHistory(prevMoveHistory);
+            setLastMove(null);
           }
         });
 
@@ -331,7 +341,7 @@ export function useMultiplayerGame(
         return false;
       }
     },
-    [game.id, myColor, apiFetch, playMoveSound]
+    [game.id, myColor, apiFetch, playMoveSound, moveHistory]
   );
 
   // ──── Handle timeout ────

@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
+import { useApi } from '@/lib/hooks/use-api';
 import type { Game } from '@/types';
 
 interface WaitingScreenProps {
@@ -10,6 +12,20 @@ interface WaitingScreenProps {
 
 export default function WaitingScreen({ game }: WaitingScreenProps) {
   const router = useRouter();
+  const { apiFetch } = useApi();
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  async function handleCancel() {
+    setIsCancelling(true);
+    const { error } = await apiFetch(`/api/games/${game.id}/cancel`, {
+      method: 'POST',
+    });
+    if (error) {
+      console.error('Cancel error:', error);
+    }
+    setIsCancelling(false);
+    router.push('/lobby');
+  }
 
   return (
     <div className="flex flex-col items-center justify-center h-screen px-6 gap-6">
@@ -39,14 +55,25 @@ export default function WaitingScreen({ game }: WaitingScreenProps) {
         </span>
       </div>
 
-      <Button
-        variant="secondary"
-        size="lg"
-        className="w-full max-w-xs"
-        onClick={() => router.push('/lobby')}
-      >
-        Back to Lobby
-      </Button>
+      <div className="flex flex-col gap-2 w-full max-w-xs">
+        <Button
+          variant="danger"
+          size="lg"
+          className="w-full"
+          onClick={handleCancel}
+          loading={isCancelling}
+        >
+          Cancel Game
+        </Button>
+        <Button
+          variant="secondary"
+          size="lg"
+          className="w-full"
+          onClick={() => router.push('/lobby')}
+        >
+          Back to Lobby
+        </Button>
+      </div>
     </div>
   );
 }

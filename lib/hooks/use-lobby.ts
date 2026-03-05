@@ -12,7 +12,9 @@ interface UseLobbyReturn {
 }
 
 /**
- * Hook that fetches OPEN games from Supabase and subscribes to Realtime updates.
+ * Hook that fetches OPEN games from Supabase with polling.
+ * Uses polling instead of postgres_changes because custom JWT auth
+ * means auth.uid() is NULL, so RLS blocks realtime events.
  */
 export function useLobby(): UseLobbyReturn {
   const [games, setGames] = useState<LobbyGame[]>([]);
@@ -68,29 +70,9 @@ export function useLobby(): UseLobbyReturn {
 
   useEffect(() => {
     fetchGames();
-
-    // Subscribe to realtime changes on games table
-    const channel = supabase
-      .channel('lobby-games')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'games',
-          filter: 'status=eq.OPEN',
-        },
-        () => {
-          // On any change to OPEN games, refetch the list
-          fetchGames();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [supabase, fetchGames]);
+    const interval = setInterval(fetchGames, 10_000);
+    return () => clearInterval(interval);
+  }, [fetchGames]);
 
   return { games, isLoading, error, refetch: fetchGames };
 }

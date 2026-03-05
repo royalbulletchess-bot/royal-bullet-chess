@@ -67,6 +67,8 @@ export interface Game {
   final_fen: string | null;
   expires_at: string | null;
   matching_expires_at: string | null;
+  creator_elo_change: number | null;
+  opponent_elo_change: number | null;
   created_at: string;
   started_at: string | null;
   finished_at: string | null;

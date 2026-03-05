@@ -78,7 +78,7 @@ async function handler(req: NextRequest, session: SessionPayload) {
 
   // Timeout check — player's clock ran out before making the move
   if (newTimeMs <= 0) {
-    const winnerId = myColor === 'WHITE' ? game.opponent_id : game.creator_id;
+    const winnerId = isCreator ? game.opponent_id : game.creator_id;
     const result: GameResult = myColor === 'WHITE' ? 'BLACK_WIN' : 'WHITE_WIN';
 
     await finishGame({
