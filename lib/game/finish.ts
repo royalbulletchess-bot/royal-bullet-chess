@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { calculateGameElo } from '@/lib/game/elo';
 import { finishGameOnChain, finishDrawOnChain, cancelGameOnChain } from '@/lib/web3/send-payout';
+import { COMMISSION_RATE } from '@/lib/constants';
 import type { GameResult, PlayerColor } from '@/types';
 
 interface FinishGameParams {
@@ -124,6 +125,12 @@ export async function finishGame({
         })
         .eq('id', gameId);
 
+      // Merge into returned object so broadcast includes ELO data
+      if (updatedGame) {
+        (updatedGame as Record<string, unknown>).creator_elo_change = creatorDelta;
+        (updatedGame as Record<string, unknown>).opponent_elo_change = opponentDelta;
+      }
+
       console.log(
         `[finishGame] ELO — Creator: ${creator.elo_rating} → ${creatorNewElo} (${creatorDelta >= 0 ? '+' : ''}${creatorDelta}), ` +
         `Opponent: ${opponent.elo_rating} → ${opponentNewElo} (${opponentDelta >= 0 ? '+' : ''}${opponentDelta})`
@@ -182,7 +189,7 @@ export async function finishGame({
           console.error(`[finishGame] On-chain win payout failed: ${payoutResult.error}`);
         } else {
           const potAmount = Number(game.pot_amount);
-          const commission = potAmount * 0.1;
+          const commission = potAmount * COMMISSION_RATE;
           const payout = potAmount - commission;
 
           // Record payout + commission

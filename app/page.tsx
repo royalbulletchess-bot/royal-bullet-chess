@@ -28,13 +28,13 @@ export default function Home() {
 
   // Auto-trigger wallet auth once MetaMask connects (browser only)
   useEffect(() => {
-    if (isConnected && address && !user && !isLoading && !isInMiniApp && !walletLoading) {
+    if (isConnected && address && !user && !isLoading && !isInMiniApp && !walletLoading && !error) {
       setWalletLoading(true);
       loginWithWallet(address, signMessageAsync).finally(() => {
         setWalletLoading(false);
       });
     }
-  }, [isConnected, address, user, isLoading, isInMiniApp, walletLoading, loginWithWallet, signMessageAsync]);
+  }, [isConnected, address, user, isLoading, isInMiniApp, walletLoading, error, loginWithWallet, signMessageAsync]);
 
   // Loading state
   if (isLoading || walletLoading) {

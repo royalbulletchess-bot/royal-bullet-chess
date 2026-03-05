@@ -133,6 +133,45 @@ finish.ts stores creator_elo_change/opponent_elo_change in game record. game-ove
 ## FIXED: Timer 25-second drift between players
 use-multiplayer-game.ts new_move handler now syncs the mover's timer with moveData.time_remaining from the server on every opponent move broadcast.
 
+## FIXED: Timer.tsx onTimeout fires multiple times
+Added `hasTimedOutRef` guard to prevent duplicate timeout calls. Also reset `startTimeRef` on server sync to prevent time display corruption after external timer updates. Added threshold check for `onLowTimeTick` so it only fires when remaining <= LOW_TIME_WARNING_MS.
+
+## FIXED: Optimistic move rollback incomplete
+use-multiplayer-game.ts: rollback now reverts ALL state — gameOver, whiteTimeMs, blackTimeMs, lastMoveTimeRef — not just fen/moveHistory/moveCount.
+
+## FIXED: Approval race condition — game stuck in MATCHING
+approve/route.ts: re-fetches game after writing approval flag to check if BOTH are approved. Transitions to ACTIVE with optimistic lock so only one caller starts the game. Prevents simultaneous approvals from both seeing other=false.
+
+## FIXED: finish.ts uses hardcoded 0.1 commission
+Now imports and uses COMMISSION_RATE constant from lib/constants.
+
+## FIXED: finish.ts broadcast doesn't include ELO deltas
+Merges creatorDelta/opponentDelta into updatedGame before return so broadcastGameUpdate includes ELO data.
+
+## FIXED: Game-over draw shows $0.00 refund
+Changed to show betAmount.toFixed(2) for draws (the actual refund amount).
+
+## FIXED: QuickPlayGrid cancel doesn't cancel server-side game
+handleCancel now calls /api/games/{id}/cancel to clean up orphaned OPEN games.
+
+## FIXED: WaitingScreen navigates even on cancel failure
+handleCancel now only navigates to lobby if the cancel API call succeeds.
+
+## FIXED: join/route.ts + quick-play/route.ts uncaught broadcast errors
+Added .catch() to broadcastGameUpdate calls to prevent 500 on successful operations.
+
+## FIXED: Login page infinite retry loop
+Added `!error` guard to wallet auth auto-trigger condition. Added `error` to dependency array.
+
+## FIXED: SESSION_SECRET silently uses "undefined" as secret
+session.ts: added runtime check that throws if SESSION_SECRET is missing.
+
+## FIXED: use-game-state.ts broadcast resubscription on opponent change
+Used `opponentRef` instead of `opponent` in broadcast handler dependency array to prevent channel reconnection when opponent data is fetched.
+
+## FIXED: ApprovalScreen myColor null shows Black
+Shows "Assigning..." when myColor is null instead of defaulting to Black display.
+
 ---
 
 # BUGS TO FIX (Remaining)
@@ -141,3 +180,13 @@ use-multiplayer-game.ts new_move handler now syncs the mover's timer with moveDa
 ## BUG 12 — LOW: "Play Again" goes to lobby instead of re-queue
 ## BUG 13 — LOW: No network disconnect detection/recovery
 ## BUG 14 — LOW: Rematch endpoint needs verification
+
+---
+
+# KNOWN ISSUES (Architecture / Security — Noted but not fixed)
+
+- **SIWE auth has no nonce/replay protection**: Wallet auth message has no nonce or expiration. A captured signature can be replayed. Needs proper SIWE (EIP-4361) implementation.
+- **Mock payments env var is client-visible**: `NEXT_PUBLIC_MOCK_PAYMENTS=true` skips signature verification. Must be false in production.
+- **move/route.ts non-atomic operations**: Move insert + game update are separate queries with no transaction. Could produce inconsistent state on crash.
+- **verify-payment.ts no event topic verification**: Accepts any successful tx to escrow address. Should verify specific contract events.
+- **pot_amount set to 2x at creation**: Only one player has paid at that point. Should update on join.

@@ -215,7 +215,7 @@ export default function GameOverPage() {
                 : 'text-[var(--danger)]'
           }`}
         >
-          {isWin ? '+' : isDraw ? '' : '-'}${isWin ? winPayout.toFixed(2) : isDraw ? '0.00' : betAmount.toFixed(2)}
+          {isWin ? '+' : isDraw ? '' : '-'}${isWin ? winPayout.toFixed(2) : isDraw ? betAmount.toFixed(2) : betAmount.toFixed(2)}
         </p>
         <p className="text-xs text-[var(--muted)] mt-1">USDC</p>
       </div>

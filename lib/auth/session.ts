@@ -1,6 +1,9 @@
 import { SignJWT, jwtVerify } from 'jose';
 
-const secret = new TextEncoder().encode(process.env.SESSION_SECRET!);
+if (!process.env.SESSION_SECRET) {
+  throw new Error('SESSION_SECRET environment variable is required');
+}
+const secret = new TextEncoder().encode(process.env.SESSION_SECRET);
 
 export interface SessionPayload {
   userId: string;

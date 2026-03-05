@@ -92,7 +92,9 @@ async function handler(req: NextRequest, session: SessionPayload) {
 
       // Broadcast MATCHING state to Player 1 (creator) waiting on lobby
       // This bypasses RLS which blocks postgres_changes for custom JWT auth
-      await broadcastGameUpdate(game.id, updatedGame as Game);
+      await broadcastGameUpdate(game.id, updatedGame as Game).catch((err) => {
+        console.error('[quick-play] Broadcast error:', err);
+      });
 
       return apiOk({ game: updatedGame, matched: true });
     }

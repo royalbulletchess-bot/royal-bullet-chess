@@ -18,6 +18,7 @@ export default function Timer({ initialTimeMs, isRunning, onTimeout, onLowTimeTi
   const timeAtStartRef = useRef<number>(initialTimeMs);
   const onTimeoutRef = useRef(onTimeout);
   const onLowTimeTickRef = useRef(onLowTimeTick);
+  const hasTimedOutRef = useRef(false);
 
   // Keep refs in sync to avoid stale closures
   onTimeoutRef.current = onTimeout;
@@ -27,7 +28,15 @@ export default function Timer({ initialTimeMs, isRunning, onTimeout, onLowTimeTi
   useEffect(() => {
     setDisplayMs(initialTimeMs);
     timeAtStartRef.current = initialTimeMs;
-  }, [initialTimeMs]);
+    // Reset startTimeRef so running timer uses correct baseline
+    if (isRunning) {
+      startTimeRef.current = performance.now();
+    }
+    // Reset timeout flag if time was restored (e.g. server sync with positive time)
+    if (initialTimeMs > 0) {
+      hasTimedOutRef.current = false;
+    }
+  }, [initialTimeMs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!isRunning) {
@@ -43,12 +52,15 @@ export default function Timer({ initialTimeMs, isRunning, onTimeout, onLowTimeTi
       const remaining = Math.max(0, timeAtStartRef.current - elapsed);
       setDisplayMs(remaining);
 
-      if (onLowTimeTickRef.current) {
+      if (onLowTimeTickRef.current && remaining <= LOW_TIME_WARNING_MS) {
         onLowTimeTickRef.current(remaining);
       }
 
       if (remaining <= 0) {
-        onTimeoutRef.current();
+        if (!hasTimedOutRef.current) {
+          hasTimedOutRef.current = true;
+          onTimeoutRef.current();
+        }
         return;
       }
 

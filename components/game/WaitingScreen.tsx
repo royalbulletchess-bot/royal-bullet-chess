@@ -20,10 +20,11 @@ export default function WaitingScreen({ game }: WaitingScreenProps) {
     const { error } = await apiFetch(`/api/games/${game.id}/cancel`, {
       method: 'POST',
     });
+    setIsCancelling(false);
     if (error) {
       console.error('Cancel error:', error);
+      return; // Don't navigate away if cancel failed — game may still be open
     }
-    setIsCancelling(false);
     router.push('/lobby');
   }
 

@@ -38,6 +38,8 @@ export function useGameState(gameId: string): UseGameStateReturn {
   const [error, setError] = useState<string | null>(null);
   const [isApproving, setIsApproving] = useState(false);
   const supabase = useRef(createClient()).current;
+  const opponentRef = useRef(opponent);
+  opponentRef.current = opponent;
 
   // Derive game info
   const isCreator = game?.creator_id === user?.id;
@@ -115,7 +117,7 @@ export function useGameState(gameId: string): UseGameStateReturn {
           setPhase(newPhase);
 
           // If opponent just joined (matching phase), re-fetch to get opponent data
-          if (update.status === 'MATCHING' && !opponent) {
+          if (update.status === 'MATCHING' && !opponentRef.current) {
             fetchGame();
           }
         }
@@ -125,7 +127,7 @@ export function useGameState(gameId: string): UseGameStateReturn {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [gameId, supabase, opponent, fetchGame]);
+  }, [gameId, supabase, fetchGame]);
 
   // Approve match
   const approve = useCallback(async () => {

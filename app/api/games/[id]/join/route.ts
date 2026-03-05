@@ -113,7 +113,9 @@ async function handler(
 
   // Broadcast MATCHING state to Player 1 (creator)
   // This bypasses RLS which blocks postgres_changes for custom JWT auth
-  await broadcastGameUpdate(gameId, updatedGame as Game);
+  await broadcastGameUpdate(gameId, updatedGame as Game).catch((err) => {
+    console.error('[join] Broadcast error:', err);
+  });
 
   return apiOk({ game: updatedGame });
 }

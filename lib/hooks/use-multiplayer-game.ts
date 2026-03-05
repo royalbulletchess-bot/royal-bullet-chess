@@ -328,9 +328,14 @@ export function useMultiplayerGame(
         }
 
         // ─── Send to server ───
+        // Save full snapshot for rollback
         const prevFen = currentFen;
         const prevMoveCount = moveCountRef.current - 1;
         const prevMoveHistory = moveHistory;
+        const prevGameOver = gameOverRef.current;
+        const prevLastMoveTime = lastMoveTimeRef.current;
+        const prevWhiteTimeMs = whiteTimeMs;
+        const prevBlackTimeMs = blackTimeMs;
 
         apiFetch(`/api/games/${game.id}/move`, {
           method: 'POST',
@@ -344,6 +349,11 @@ export function useMultiplayerGame(
             moveCountRef.current = prevMoveCount;
             setMoveHistory(prevMoveHistory);
             setLastMove(null);
+            setGameOver(prevGameOver);
+            gameOverRef.current = prevGameOver;
+            lastMoveTimeRef.current = prevLastMoveTime;
+            setWhiteTimeMs(prevWhiteTimeMs);
+            setBlackTimeMs(prevBlackTimeMs);
           }
         });
 
@@ -352,7 +362,7 @@ export function useMultiplayerGame(
         return false;
       }
     },
-    [game.id, myColor, apiFetch, playMoveSound, moveHistory]
+    [game.id, myColor, apiFetch, playMoveSound, moveHistory, whiteTimeMs, blackTimeMs]
   );
 
   // ──── Handle timeout ────

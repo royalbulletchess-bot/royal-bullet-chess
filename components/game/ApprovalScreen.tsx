@@ -74,7 +74,7 @@ export default function ApprovalScreen({
         <div className="flex justify-between text-sm mb-2">
           <span className="text-[var(--muted)]">Your color</span>
           <span className="font-bold">
-            {myColor === 'WHITE' ? '\u2654 White' : '\u265A Black'}
+            {myColor === null ? 'Assigning...' : myColor === 'WHITE' ? '\u2654 White' : '\u265A Black'}
           </span>
         </div>
         <div className="flex justify-between text-sm">

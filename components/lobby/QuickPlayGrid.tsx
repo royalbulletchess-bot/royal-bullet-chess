@@ -108,10 +108,14 @@ export default function QuickPlayGrid() {
     }
   }
 
-  function handleCancel() {
+  async function handleCancel() {
     if (channelRef.current) {
       supabaseRef.current.removeChannel(channelRef.current);
       channelRef.current = null;
+    }
+    // Cancel the server-side game so it doesn't remain OPEN
+    if (waitingGameId) {
+      await apiFetch(`/api/games/${waitingGameId}/cancel`, { method: 'POST' }).catch(() => {});
     }
     setIsSearching(false);
     setWaitingGameId(null);

@@ -44,31 +44,52 @@ async function handler(req: NextRequest, session: SessionPayload) {
     return apiError('You are not a participant in this game', 403);
   }
 
-  // Update approval
+  // Update this player's approval flag only
   const updateField = isCreator ? 'creator_approved' : 'opponent_approved';
-  const otherApproved = isCreator ? game.opponent_approved : game.creator_approved;
 
-  const updates: Record<string, unknown> = {
-    [updateField]: true,
-  };
-
-  // If both approved, start the game
-  if (otherApproved) {
-    updates.status = 'ACTIVE';
-    updates.started_at = new Date().toISOString();
-    updates.last_move_at = new Date().toISOString(); // White's clock starts
-  }
-
-  const { data: updatedGame, error: updateError } = await supabaseAdmin
+  const { error: updateError } = await supabaseAdmin
     .from('games')
-    .update(updates)
+    .update({ [updateField]: true })
     .eq('id', gameId)
-    .select('*')
-    .single();
+    .eq('status', 'MATCHING');
 
-  if (updateError || !updatedGame) {
+  if (updateError) {
     console.error('Approve error:', updateError);
     return apiError('Failed to approve', 500);
+  }
+
+  // Re-fetch to check if BOTH players are now approved (prevents race condition
+  // where two simultaneous approvals each read the other as not-yet-approved)
+  const { data: freshGame, error: refetchError } = await supabaseAdmin
+    .from('games')
+    .select('*')
+    .eq('id', gameId)
+    .single();
+
+  if (refetchError || !freshGame) {
+    return apiError('Failed to fetch game', 500);
+  }
+
+  let updatedGame = freshGame;
+
+  // If both approved, atomically transition to ACTIVE
+  if (freshGame.creator_approved && freshGame.opponent_approved && freshGame.status === 'MATCHING') {
+    const now = new Date().toISOString();
+    const { data: startedGame, error: startError } = await supabaseAdmin
+      .from('games')
+      .update({
+        status: 'ACTIVE',
+        started_at: now,
+        last_move_at: now,
+      })
+      .eq('id', gameId)
+      .eq('status', 'MATCHING') // Optimistic lock: only one caller transitions
+      .select('*')
+      .single();
+
+    if (startedGame && !startError) {
+      updatedGame = startedGame;
+    }
   }
 
   // Broadcast game update to both players
