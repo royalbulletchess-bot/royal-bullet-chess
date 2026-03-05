@@ -183,6 +183,9 @@ export function useMultiplayerGame(
         const currentFen = fenRef.current;
         const chess = new Chess(currentFen);
 
+        // Determine the mover's color from FEN turn (before move is applied)
+        const moverColor: PlayerColor = chess.turn() === 'w' ? 'WHITE' : 'BLACK';
+
         try {
           const move = chess.move(moveData.san);
           if (!move) return;
@@ -195,6 +198,13 @@ export function useMultiplayerGame(
           moveCountRef.current += 1;
           setLastMove({ from: move.from, to: move.to });
           lastMoveTimeRef.current = performance.now();
+
+          // Sync mover's timer with server-authoritative value
+          if (moverColor === 'WHITE') {
+            setWhiteTimeMs(moveData.time_remaining);
+          } else {
+            setBlackTimeMs(moveData.time_remaining);
+          }
 
           // Play sound
           const isCheckmate = chess.isCheckmate();
@@ -234,8 +244,9 @@ export function useMultiplayerGame(
           setBlackTimeMs(update.black_time_remaining_ms);
         }
 
-        // Check if game ended (resign, timeout, server-side termination)
-        if (update.status === 'FINISHED' && !gameOverRef.current) {
+        // Server FINISHED broadcast is authoritative — always accept it,
+        // even if client already set gameOver locally (prevents mismatched results).
+        if (update.status === 'FINISHED') {
           const result = (update.result || 'DRAW') as GameResult;
           let reason = 'Game ended';
 

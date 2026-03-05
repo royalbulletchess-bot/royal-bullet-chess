@@ -31,15 +31,24 @@ export default function GameOverPage() {
   const [rematchLoading, setRematchLoading] = useState(false);
 
   useEffect(() => {
-    async function fetchGame() {
+    async function fetchGame(attempt = 1): Promise<void> {
       const { data: result, error: apiErr } = await apiFetch<GameOverData>(
         `/api/games/${gameId}`
       );
       if (apiErr || !result) {
         setError(apiErr || 'Game not found');
-      } else {
-        setData(result);
+        setIsLoading(false);
+        return;
       }
+
+      // If result is not yet available (race condition: client navigated
+      // before server finished processing), retry up to 3 times.
+      if (!result.game.result && result.game.status !== 'FINISHED' && attempt < 3) {
+        await new Promise(r => setTimeout(r, 2000));
+        return fetchGame(attempt + 1);
+      }
+
+      setData(result);
       setIsLoading(false);
     }
     fetchGame();
@@ -65,6 +74,19 @@ export default function GameOverPage() {
   }
 
   const { game, opponent } = data;
+
+  // If server hasn't finished processing yet, show a waiting screen
+  if (!game.result) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4 px-6">
+        <div className="text-4xl animate-pulse">{'\u265A'}</div>
+        <p className="text-sm text-[var(--muted)]">Result is being processed...</p>
+        <Button variant="secondary" onClick={() => router.push('/lobby')}>
+          Back to Lobby
+        </Button>
+      </div>
+    );
+  }
 
   // Determine result from player's perspective
   const isCreator = game.creator_id === user?.id;

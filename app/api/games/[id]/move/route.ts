@@ -81,12 +81,16 @@ async function handler(req: NextRequest, session: SessionPayload) {
     const winnerId = isCreator ? game.opponent_id : game.creator_id;
     const result: GameResult = myColor === 'WHITE' ? 'BLACK_WIN' : 'WHITE_WIN';
 
-    await finishGame({
+    const finished = await finishGame({
       gameId,
       result,
       winnerId,
       finalFen: game.current_fen,
     });
+
+    if (finished) {
+      await broadcastGameUpdate(gameId, finished as Game).catch(() => {});
+    }
 
     return apiError('Time expired');
   }
