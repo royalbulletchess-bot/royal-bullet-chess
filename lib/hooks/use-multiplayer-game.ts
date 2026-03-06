@@ -337,10 +337,10 @@ export function useMultiplayerGame(
         const prevWhiteTimeMs = whiteTimeMs;
         const prevBlackTimeMs = blackTimeMs;
 
-        apiFetch(`/api/games/${game.id}/move`, {
+        apiFetch<{ timeRemainingMs?: number }>(`/api/games/${game.id}/move`, {
           method: 'POST',
           body: JSON.stringify({ from, to, promotion }),
-        }).then(({ error }) => {
+        }).then(({ data, error }) => {
           if (error) {
             console.error('[useMultiplayerGame] Server rejected move, rolling back:', error);
             setFen(prevFen);
@@ -354,6 +354,13 @@ export function useMultiplayerGame(
             lastMoveTimeRef.current = prevLastMoveTime;
             setWhiteTimeMs(prevWhiteTimeMs);
             setBlackTimeMs(prevBlackTimeMs);
+          } else if (data?.timeRemainingMs !== undefined) {
+            // Sync own timer with server-authoritative value to prevent drift
+            if (myColor === 'WHITE') {
+              setWhiteTimeMs(data.timeRemainingMs);
+            } else {
+              setBlackTimeMs(data.timeRemainingMs);
+            }
           }
         });
 

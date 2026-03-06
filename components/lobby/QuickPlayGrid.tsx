@@ -147,17 +147,26 @@ export default function QuickPlayGrid() {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* 4x3 Grid */}
-      <div className="grid grid-cols-4 gap-2">
-        {QUICK_PLAY_AMOUNTS.map((amount) => (
-          <button
-            key={amount}
-            onClick={() => handleSelect(amount)}
-            className="rounded-xl border bg-[var(--card)] border-[var(--border)] px-2 py-3 text-center transition-all hover:bg-[var(--card-hover)] hover:border-[var(--accent)]/40"
-          >
-            <span className="text-sm font-bold">${amount}</span>
-          </button>
-        ))}
+      {/* 3x4 Chess Board Grid */}
+      <div className="grid grid-cols-3 overflow-hidden rounded-xl border border-[var(--border)]">
+        {QUICK_PLAY_AMOUNTS.map((amount, index) => {
+          const row = Math.floor(index / 3);
+          const col = index % 3;
+          const isDark = (row + col) % 2 === 1;
+          return (
+            <button
+              key={amount}
+              onClick={() => handleSelect(amount)}
+              className={`px-2 py-4 text-center transition-all hover:opacity-80 ${
+                isDark
+                  ? 'bg-[#779952] text-white'
+                  : 'bg-[#edeed1] text-[#333]'
+              }`}
+            >
+              <span className="text-sm font-bold">${amount}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Info */}
